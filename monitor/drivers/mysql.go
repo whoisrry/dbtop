@@ -37,7 +37,7 @@ func (d *mysqlDriver) Connect(instance config.DatabaseInstance) (*sql.DB, error)
 }
 
 func (d *mysqlDriver) GetStats(db *sql.DB, database string) (*stats.DatabaseStats, error) {
-	stats := &stats.DatabaseStats{
+	result := &stats.DatabaseStats{
 		Timestamp: time.Now(),
 	}
 
@@ -59,15 +59,15 @@ func (d *mysqlDriver) GetStats(db *sql.DB, database string) (*stats.DatabaseStat
 
 	// Parse status variables
 	if connections, ok := statusVars["Threads_connected"]; ok {
-		if _, err := fmt.Sscanf(connections, "%d", &stats.ActiveConnections); err != nil {
-			stats.ActiveConnections = 0
+		if _, err := fmt.Sscanf(connections, "%d", &result.ActiveConnections); err != nil {
+			result.ActiveConnections = 0
 		}
 	}
 
 	if uptime, ok := statusVars["Uptime"]; ok {
 		var uptimeSeconds int64
 		if _, err := fmt.Sscanf(uptime, "%d", &uptimeSeconds); err == nil {
-			stats.Uptime = time.Duration(uptimeSeconds) * time.Second
+			result.Uptime = time.Duration(uptimeSeconds) * time.Second
 		}
 	}
 
@@ -114,7 +114,7 @@ func (d *mysqlDriver) GetStats(db *sql.DB, database string) (*stats.DatabaseStat
 			}
 		}
 
-		stats.Processes = append(stats.Processes, process)
+		result.Processes = append(result.Processes, process)
 	}
 
 	// Get table information
@@ -151,7 +151,7 @@ func (d *mysqlDriver) GetStats(db *sql.DB, database string) (*stats.DatabaseStat
 				table.IndexSize = indexLength.Int64
 			}
 
-			stats.Tables = append(stats.Tables, table)
+			result.Tables = append(result.Tables, table)
 		}
 	} else {
 		// Show tables from all databases
@@ -180,9 +180,9 @@ func (d *mysqlDriver) GetStats(db *sql.DB, database string) (*stats.DatabaseStat
 				table.IndexSize = indexLength.Int64
 			}
 
-			stats.Tables = append(stats.Tables, table)
+			result.Tables = append(result.Tables, table)
 		}
 	}
 
-	return stats, nil
+	return result, nil
 }

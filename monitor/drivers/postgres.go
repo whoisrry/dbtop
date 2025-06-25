@@ -38,7 +38,7 @@ func (d *postgresDriver) Connect(instance config.DatabaseInstance) (*sql.DB, err
 }
 
 func (d *postgresDriver) GetStats(db *sql.DB, database string) (*stats.DatabaseStats, error) {
-	stats := &stats.DatabaseStats{
+	result := &stats.DatabaseStats{
 		Timestamp: time.Now(),
 	}
 
@@ -57,7 +57,7 @@ func (d *postgresDriver) GetStats(db *sql.DB, database string) (*stats.DatabaseS
 			return nil, fmt.Errorf("failed to get active connections: %w", err)
 		}
 	}
-	stats.ActiveConnections = activeConnections
+	result.ActiveConnections = activeConnections
 
 	// Get total connections
 	var totalConnections int64
@@ -74,7 +74,7 @@ func (d *postgresDriver) GetStats(db *sql.DB, database string) (*stats.DatabaseS
 			return nil, fmt.Errorf("failed to get total connections: %w", err)
 		}
 	}
-	stats.TotalConnections = totalConnections
+	result.TotalConnections = totalConnections
 
 	// Get uptime
 	var uptimeSeconds int64
@@ -82,7 +82,7 @@ func (d *postgresDriver) GetStats(db *sql.DB, database string) (*stats.DatabaseS
 	if err != nil {
 		return nil, fmt.Errorf("failed to get uptime: %w", err)
 	}
-	stats.Uptime = time.Duration(uptimeSeconds) * time.Second
+	result.Uptime = time.Duration(uptimeSeconds) * time.Second
 
 	// Get process information
 	processQuery := `
@@ -139,7 +139,7 @@ func (d *postgresDriver) GetStats(db *sql.DB, database string) (*stats.DatabaseS
 			process.Time = int64(time.Since(queryStart.Time).Seconds())
 		}
 
-		stats.Processes = append(stats.Processes, process)
+		result.Processes = append(result.Processes, process)
 	}
 
 	// Get table information
@@ -177,8 +177,8 @@ func (d *postgresDriver) GetStats(db *sql.DB, database string) (*stats.DatabaseS
 		}
 
 		table.DataSize = totalSize
-		stats.Tables = append(stats.Tables, table)
+		result.Tables = append(result.Tables, table)
 	}
 
-	return stats, nil
+	return result, nil
 }

@@ -37,7 +37,7 @@ func (d *oracleDriver) Connect(instance config.DatabaseInstance) (*sql.DB, error
 }
 
 func (d *oracleDriver) GetStats(db *sql.DB, database string) (*stats.DatabaseStats, error) {
-	stats := &stats.DatabaseStats{
+	result := &stats.DatabaseStats{
 		Timestamp: time.Now(),
 	}
 
@@ -60,7 +60,7 @@ func (d *oracleDriver) GetStats(db *sql.DB, database string) (*stats.DatabaseSta
 			return nil, fmt.Errorf("failed to get active connections: %w", err)
 		}
 	}
-	stats.ActiveConnections = activeConnections
+	result.ActiveConnections = activeConnections
 
 	// Get total sessions
 	var totalConnections int64
@@ -81,7 +81,7 @@ func (d *oracleDriver) GetStats(db *sql.DB, database string) (*stats.DatabaseSta
 			return nil, fmt.Errorf("failed to get total connections: %w", err)
 		}
 	}
-	stats.TotalConnections = totalConnections
+	result.TotalConnections = totalConnections
 
 	// Get uptime
 	var uptimeSeconds int64
@@ -95,7 +95,7 @@ func (d *oracleDriver) GetStats(db *sql.DB, database string) (*stats.DatabaseSta
 	if err != nil {
 		return nil, fmt.Errorf("failed to get uptime: %w", err)
 	}
-	stats.Uptime = time.Duration(uptimeSeconds) * time.Second
+	result.Uptime = time.Duration(uptimeSeconds) * time.Second
 
 	// Get session information
 	sessionQuery := `
@@ -146,7 +146,7 @@ func (d *oracleDriver) GetStats(db *sql.DB, database string) (*stats.DatabaseSta
 			process.Info = sqlText.String
 		}
 
-		stats.Processes = append(stats.Processes, process)
+		result.Processes = append(result.Processes, process)
 	}
 
 	// Get table information
@@ -220,7 +220,7 @@ func (d *oracleDriver) GetStats(db *sql.DB, database string) (*stats.DatabaseSta
 				table.IndexSize = indexSize.Int64
 			}
 
-			stats.Tables = append(stats.Tables, table)
+			result.Tables = append(result.Tables, table)
 		}
 	} else {
 		// Show tables from all schemas (limited to user's accessible schemas)
@@ -268,9 +268,9 @@ func (d *oracleDriver) GetStats(db *sql.DB, database string) (*stats.DatabaseSta
 				table.IndexSize = indexSize.Int64
 			}
 
-			stats.Tables = append(stats.Tables, table)
+			result.Tables = append(result.Tables, table)
 		}
 	}
 
-	return stats, nil
+	return result, nil
 }
