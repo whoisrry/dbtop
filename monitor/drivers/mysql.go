@@ -25,8 +25,31 @@ func (d *mysqlDriver) Connect(instance config.DatabaseInstance) (*sql.DB, error)
 			// No password - try Unix socket authentication or empty password
 			if instance.Host == "localhost" || instance.Host == "127.0.0.1" {
 				// Try Unix socket first (most common for local MySQL without password)
-				dsn = fmt.Sprintf("%s@unix(/tmp/mysql.sock)/%s?parseTime=true",
-					instance.Username, instance.Database)
+				// Try multiple common socket paths
+				socketPaths := []string{
+					"/var/run/mysqld/mysqld.sock", // Ubuntu/Debian default
+					"/tmp/mysql.sock",             // Common alternative
+					"/var/lib/mysql/mysql.sock",   // Another common path
+				}
+
+				for _, socketPath := range socketPaths {
+					dsn = fmt.Sprintf("%s@unix(%s)/%s?parseTime=true",
+						instance.Username, socketPath, instance.Database)
+
+					db, err := sql.Open("mysql", dsn)
+					if err != nil {
+						continue
+					}
+
+					if err := db.Ping(); err == nil {
+						return db, nil
+					}
+					db.Close()
+				}
+
+				// If all Unix sockets failed, try TCP with empty password
+				dsn = fmt.Sprintf("%s@tcp(%s:%d)/%s?parseTime=true",
+					instance.Username, instance.Host, instance.Port, instance.Database)
 			} else {
 				// Remote connection without password
 				dsn = fmt.Sprintf("%s@tcp(%s:%d)/%s?parseTime=true",
@@ -45,23 +68,7 @@ func (d *mysqlDriver) Connect(instance config.DatabaseInstance) (*sql.DB, error)
 	}
 
 	if err := db.Ping(); err != nil {
-		// If Unix socket failed, try TCP with empty password
-		if instance.Password == "" && (instance.Host == "localhost" || instance.Host == "127.0.0.1") {
-			dsn = fmt.Sprintf("%s@tcp(%s:%d)/%s?parseTime=true",
-				instance.Username, instance.Host, instance.Port, instance.Database)
-
-			db.Close()
-			db, err = sql.Open("mysql", dsn)
-			if err != nil {
-				return nil, fmt.Errorf("failed to open database connection: %w", err)
-			}
-
-			if err := db.Ping(); err != nil {
-				return nil, fmt.Errorf("failed to ping database: %w", err)
-			}
-		} else {
-			return nil, fmt.Errorf("failed to ping database: %w", err)
-		}
+		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
 	return db, nil
