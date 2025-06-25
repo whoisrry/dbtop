@@ -1,0 +1,106 @@
+# dbtop configuration file
+# Copy this file to ~/.dbtop and modify with your database settings
+
+instances:
+  # PostgreSQL example - monitor specific database
+  postgres_local:
+    type: postgres
+    host: localhost
+    port: 5432
+    username: postgres
+    password: your_password
+    database: your_database  # Optional - if not set, monitors all databases
+    ssl_mode: disable
+    refresh_interval: 2s     # Optional - default is 2s
+
+  # PostgreSQL example - monitor all databases (like mytop)
+  postgres_all:
+    type: postgres
+    host: localhost
+    port: 5432
+    username: postgres
+    password: your_password
+    # database: not set - will monitor all databases
+    ssl_mode: disable
+    refresh_interval: 1s
+
+  # MySQL example - monitor specific database
+  mysql_local:
+    type: mysql
+    host: localhost
+    port: 3306
+    username: root
+    password: your_password
+    database: your_database  # Optional - if not set, monitors all databases
+    refresh_interval: 2s
+
+  # MySQL example - monitor all databases
+  mysql_all:
+    type: mysql
+    host: localhost
+    port: 3306
+    username: root
+    password: your_password
+    # database: not set - will monitor all databases
+    refresh_interval: 1s
+
+  # MariaDB example - monitor specific database
+  mariadb_local:
+    type: mariadb
+    host: localhost
+    port: 3306
+    username: root
+    password: your_password
+    database: your_database
+    refresh_interval: 2s
+
+  # MariaDB example - monitor all databases
+  mariadb_all:
+    type: mariadb
+    host: localhost
+    port: 3306
+    username: root
+    password: your_password
+    # database: not set - will monitor all databases
+    refresh_interval: 1s
+
+  # Oracle example - monitor specific schema
+  oracle_local:
+    type: oracle
+    host: localhost
+    port: 1521
+    username: system
+    password: your_password
+    database: XE
+    refresh_interval: 2s
+
+  # Oracle example - monitor all schemas
+  oracle_all:
+    type: oracle
+    host: localhost
+    port: 1521
+    username: system
+    password: your_password
+    # database: not set - will monitor all schemas
+    refresh_interval: 1s
+
+  # Production PostgreSQL with SSL
+  prod_postgres:
+    type: postgres
+    host: prod-db.example.com
+    port: 5432
+    username: app_user
+    password: secure_password
+    database: production_db
+    ssl_mode: require
+    refresh_interval: 5s
+
+  # Development MySQL
+  dev_mysql:
+    type: mysql
+    host: dev-db.example.com
+    port: 3306
+    username: dev_user
+    password: dev_password
+    # database: not set - will monitor all databases
+    refresh_interval: 3s 

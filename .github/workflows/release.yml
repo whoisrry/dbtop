@@ -1,0 +1,60 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - 'v*'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/heads/v')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.24'
+
+      - name: Test
+        run: go test -v ./...
+
+  build:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.24'
+
+      - name: Test
+        run: go test -v ./...
+
+      - name: Build multi-OS binaries
+        run: |
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dbtop-linux-amd64
+          GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o dbtop-darwin-arm64
+          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dbtop-windows-amd64.exe
+          GOOS=freebsd GOARCH=amd64 go build -ldflags="-s -w" -o dbtop-freebsd-amd64
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_DEV }}
+        with:
+          name: "Release ${{ github.ref_name }}"
+          draft: false
+          prerelease: false
+          files: |
+            dbtop-linux-amd64
+            dbtop-darwin-arm64
+            dbtop-windows-amd64.exe
+            dbtop-freebsd-amd64 
