@@ -33,8 +33,9 @@ func (d *mysqlDriver) Connect(instance config.DatabaseInstance) (*sql.DB, error)
 				}
 
 				for _, socketPath := range socketPaths {
-					dsn = fmt.Sprintf("%s@unix(%s)/%s?parseTime=true",
-						instance.Username, socketPath, instance.Database)
+					// Try without database first (like mytop does)
+					dsn = fmt.Sprintf("%s@unix(%s)/?parseTime=true",
+						instance.Username, socketPath)
 
 					db, err := sql.Open("mysql", dsn)
 					if err != nil {
@@ -42,14 +43,21 @@ func (d *mysqlDriver) Connect(instance config.DatabaseInstance) (*sql.DB, error)
 					}
 
 					if err := db.Ping(); err == nil {
+						// If we need to switch to a specific database, do it after connection
+						if instance.Database != "" {
+							if _, err := db.Exec("USE " + instance.Database); err != nil {
+								db.Close()
+								continue
+							}
+						}
 						return db, nil
 					}
 					db.Close()
 				}
 
 				// If all Unix sockets failed, try TCP with empty password
-				dsn = fmt.Sprintf("%s@tcp(%s:%d)/%s?parseTime=true",
-					instance.Username, instance.Host, instance.Port, instance.Database)
+				dsn = fmt.Sprintf("%s@tcp(%s:%d)/?parseTime=true",
+					instance.Username, instance.Host, instance.Port)
 			} else {
 				// Remote connection without password
 				dsn = fmt.Sprintf("%s@tcp(%s:%d)/%s?parseTime=true",
@@ -69,6 +77,14 @@ func (d *mysqlDriver) Connect(instance config.DatabaseInstance) (*sql.DB, error)
 
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
+	}
+
+	// If we connected without database but need to use one, switch to it
+	if instance.Database != "" && dsn[len(dsn)-1] == '?' {
+		if _, err := db.Exec("USE " + instance.Database); err != nil {
+			db.Close()
+			return nil, fmt.Errorf("failed to switch to database %s: %w", instance.Database, err)
+		}
 	}
 
 	return db, nil
