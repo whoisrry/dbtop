@@ -66,7 +66,16 @@ instances:
     # database: not set - will monitor all databases
     refresh_interval: 1s
 
+  # MySQL/MariaDB without password (Unix socket authentication)
   db3:
+    type: mysql
+    host: localhost
+    port: 3306
+    username: root
+    password: ""  # Empty password - will try Unix socket first, then TCP
+    database: your_database
+
+  db4:
     type: mariadb
     host: localhost
     port: 3306
@@ -74,7 +83,7 @@ instances:
     password: your_password
     database: your_database
 
-  db4:
+  db5:
     type: oracle
     host: localhost
     port: 1521
@@ -82,6 +91,25 @@ instances:
     password: your_password
     database: XE
 ```
+
+### Authentication Methods
+
+dbtop supports various authentication methods:
+
+#### MySQL/MariaDB
+- **Password authentication**: Standard username/password
+- **Unix socket authentication**: For local connections without password (common on Linux/Unix systems)
+- **Empty password**: Automatically tries Unix socket first, then TCP connection
+- **Custom DSN**: Use the `dsn` field for custom connection strings
+
+#### PostgreSQL
+- **Password authentication**: Standard username/password
+- **Trust authentication**: No password required (configured in pg_hba.conf)
+- **SSL modes**: Various SSL modes supported via `ssl_mode` field
+
+#### Oracle
+- **Password authentication**: Standard username/password
+- **TNS**: Use custom DSN for TNS connections
 
 ## Usage
 
@@ -200,4 +228,4 @@ GOOS=windows GOARCH=amd64 go build -o dbtop-windows-amd64.exe
 
 ## License
 
-This project is licensed under the GNU General Public License v3.0 (GPLv3). See the LICENSE file for details. 
+This project is licensed under the GNU General Public License v3.0 (GPLv3). See the LICENSE file for details.

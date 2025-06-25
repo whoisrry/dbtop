@@ -20,8 +20,23 @@ func init() {
 func (d *mysqlDriver) Connect(instance config.DatabaseInstance) (*sql.DB, error) {
 	dsn := instance.GetDSN()
 	if dsn == "" {
-		dsn = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s",
-			instance.Username, instance.Password, instance.Host, instance.Port, instance.Database)
+		// Handle different authentication scenarios
+		if instance.Password == "" {
+			// No password - try Unix socket authentication or empty password
+			if instance.Host == "localhost" || instance.Host == "127.0.0.1" {
+				// Try Unix socket first (most common for local MySQL without password)
+				dsn = fmt.Sprintf("%s@unix(/tmp/mysql.sock)/%s?parseTime=true",
+					instance.Username, instance.Database)
+			} else {
+				// Remote connection without password
+				dsn = fmt.Sprintf("%s@tcp(%s:%d)/%s?parseTime=true",
+					instance.Username, instance.Host, instance.Port, instance.Database)
+			}
+		} else {
+			// With password
+			dsn = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=true",
+				instance.Username, instance.Password, instance.Host, instance.Port, instance.Database)
+		}
 	}
 
 	db, err := sql.Open("mysql", dsn)
@@ -30,7 +45,23 @@ func (d *mysqlDriver) Connect(instance config.DatabaseInstance) (*sql.DB, error)
 	}
 
 	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to ping database: %w", err)
+		// If Unix socket failed, try TCP with empty password
+		if instance.Password == "" && (instance.Host == "localhost" || instance.Host == "127.0.0.1") {
+			dsn = fmt.Sprintf("%s@tcp(%s:%d)/%s?parseTime=true",
+				instance.Username, instance.Host, instance.Port, instance.Database)
+
+			db.Close()
+			db, err = sql.Open("mysql", dsn)
+			if err != nil {
+				return nil, fmt.Errorf("failed to open database connection: %w", err)
+			}
+
+			if err := db.Ping(); err != nil {
+				return nil, fmt.Errorf("failed to ping database: %w", err)
+			}
+		} else {
+			return nil, fmt.Errorf("failed to ping database: %w", err)
+		}
 	}
 
 	return db, nil
