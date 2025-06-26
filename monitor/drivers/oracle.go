@@ -1,3 +1,6 @@
+//go:build !crosscompile
+// +build !crosscompile
+
 package drivers
 
 import (

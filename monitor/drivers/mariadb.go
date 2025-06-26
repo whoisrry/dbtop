@@ -20,8 +20,54 @@ func init() {
 func (d *mariadbDriver) Connect(instance config.DatabaseInstance) (*sql.DB, error) {
 	dsn := instance.GetDSN()
 	if dsn == "" {
-		dsn = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s",
-			instance.Username, instance.Password, instance.Host, instance.Port, instance.Database)
+		// Handle different authentication scenarios
+		if instance.Password == "" {
+			// No password - try Unix socket authentication or empty password
+			if instance.Host == "localhost" || instance.Host == "127.0.0.1" {
+				// Try Unix socket first (most common for local MariaDB without password)
+				// Try multiple common socket paths
+				socketPaths := []string{
+					"/var/run/mysqld/mysqld.sock", // Ubuntu/Debian default
+					"/tmp/mysql.sock",             // Common alternative
+					"/var/lib/mysql/mysql.sock",   // Another common path
+				}
+
+				for _, socketPath := range socketPaths {
+					// Try without database first (like mytop does)
+					dsn = fmt.Sprintf("%s@unix(%s)/?parseTime=true",
+						instance.Username, socketPath)
+
+					db, err := sql.Open("mysql", dsn)
+					if err != nil {
+						continue
+					}
+
+					if err := db.Ping(); err == nil {
+						// If we need to switch to a specific database, do it after connection
+						if instance.Database != "" {
+							if _, err := db.Exec("USE " + instance.Database); err != nil {
+								db.Close()
+								continue
+							}
+						}
+						return db, nil
+					}
+					db.Close()
+				}
+
+				// If all Unix sockets failed, try TCP with empty password
+				dsn = fmt.Sprintf("%s@tcp(%s:%d)/?parseTime=true",
+					instance.Username, instance.Host, instance.Port)
+			} else {
+				// Remote connection without password
+				dsn = fmt.Sprintf("%s@tcp(%s:%d)/%s?parseTime=true",
+					instance.Username, instance.Host, instance.Port, instance.Database)
+			}
+		} else {
+			// With password
+			dsn = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=true",
+				instance.Username, instance.Password, instance.Host, instance.Port, instance.Database)
+		}
 	}
 
 	db, err := sql.Open("mysql", dsn)
@@ -31,6 +77,14 @@ func (d *mariadbDriver) Connect(instance config.DatabaseInstance) (*sql.DB, erro
 
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
+	}
+
+	// If we connected without database but need to use one, switch to it
+	if instance.Database != "" && dsn[len(dsn)-1] == '?' {
+		if _, err := db.Exec("USE " + instance.Database); err != nil {
+			db.Close()
+			return nil, fmt.Errorf("failed to switch to database %s: %w", instance.Database, err)
+		}
 	}
 
 	return db, nil

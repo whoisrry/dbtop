@@ -38,12 +38,25 @@ jobs:
       - name: Test
         run: go test -v ./...
 
-      - name: Build multi-OS binaries
+      - name: Build Linux AMD64 (without Oracle)
         run: |
-          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dbtop-linux-amd64
-          GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o dbtop-darwin-arm64
-          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dbtop-windows-amd64.exe
-          GOOS=freebsd GOARCH=amd64 go build -ldflags="-s -w" -o dbtop-freebsd-amd64
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -tags crosscompile -o dbtop-linux-amd64
+
+      - name: Build Darwin ARM64 (without Oracle)
+        run: |
+          GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -tags crosscompile -o dbtop-darwin-arm64
+
+      - name: Build Windows AMD64 (without Oracle)
+        run: |
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -tags crosscompile -o dbtop-windows-amd64.exe
+
+      - name: Build FreeBSD AMD64 (without Oracle)
+        run: |
+          GOOS=freebsd GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -tags crosscompile -o dbtop-freebsd-amd64
+
+      - name: Build Linux AMD64 (with Oracle support)
+        run: |
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -ldflags="-s -w" -o dbtop-linux-amd64-oracle
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -57,4 +70,5 @@ jobs:
             dbtop-linux-amd64
             dbtop-darwin-arm64
             dbtop-windows-amd64.exe
-            dbtop-freebsd-amd64 
+            dbtop-freebsd-amd64
+            dbtop-linux-amd64-oracle 
