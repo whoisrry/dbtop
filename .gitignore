@@ -17,6 +17,9 @@
 # Go workspace file
 go.work
 
+# Go sum file
+go.sum
+
 # Build output
 dbtop
 dbtop-*
